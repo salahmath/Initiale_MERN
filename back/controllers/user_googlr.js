@@ -1,8 +1,8 @@
-const User_google = require('../models/usergooglr');
+const User_google = require('../models/userodel');
 const jwt = require('jsonwebtoken');
 
 exports.LoginUser_google = async (req, res) => {
-  const { email, username } = req.body;
+  const { email, username,image } = req.body;
   
   try {
     // Chercher l'utilisateur dans la base de données
@@ -12,7 +12,8 @@ exports.LoginUser_google = async (req, res) => {
     if (!user) {
       user = new User_google({
         username,
-        email
+        email,
+        image
       });
 
       // Sauvegarder le nouvel utilisateur dans la base de données
@@ -36,7 +37,7 @@ exports.getauser_google = async (req, res) => {
     const user = await User_google.findById(id); // Trouver l'utilisateur dans la base de données
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'User not found 2' });
     }
 
     res.json({ user }); // Répondre avec les détails de l'utilisateur

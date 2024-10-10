@@ -4,7 +4,7 @@ const User_google = require('../models/usergooglr'); // Assurez-vous que le chem
 
 const authMiddleware = async (req, res, next) => {
   let token;
-  
+
   // Vérifiez si le token est dans l'en-tête Authorization
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     token = req.headers.authorization.split(' ')[1]; // Extraire le token
@@ -16,12 +16,15 @@ const authMiddleware = async (req, res, next) => {
         
         // Trouvez l'utilisateur correspondant au token
         const foundUser = await User.findById(decoded.id).select('-password'); // Exclure le mot de passe des données utilisateur
+        const foundUser1 = await User_google.findById(decoded.id).select('-password'); // Exclure le mot de passe des données utilisateur
 
-        if (!foundUser) {
+        // Vérifiez si un utilisateur est trouvé dans l'une des collections
+        if (!foundUser && !foundUser1) {
           return res.status(404).json({ message: 'User not found' });
         }
 
-        req.user = foundUser; // Attachez l'utilisateur trouvé à req.user
+        // Attachez l'utilisateur trouvé à req.user
+        req.user = foundUser || foundUser1;
         next(); // Passez au prochain middleware ou contrôleur
       } else {
         res.status(401).json({ message: 'No token provided' });
@@ -34,6 +37,7 @@ const authMiddleware = async (req, res, next) => {
     res.status(401).json({ message: 'Authorization header not provided' });
   }
 };
+
 
 const authMiddleware2 = async (req, res, next) => {
   let token;
@@ -68,4 +72,22 @@ const authMiddleware2 = async (req, res, next) => {
   }
 };
 
-module.exports = { authMiddleware,authMiddleware2 };
+authMiddleware3 = async (req, res, next) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+  }
+
+  try {
+      const decoded = jwt.verify(token, 'YOUR_SECRET_KEY'); // Assure-toi que la clé secrète est correcte
+      req.user = await User.findById(decoded.userId);
+      if (!req.user) {
+          return res.status(401).json({ message: 'User not found' });
+      }
+      req.userId = decoded.userId; // Assure-toi que userId est bien attaché à req
+      next();
+  } catch (err) {
+      res.status(401).json({ message: 'Invalid token' });
+  }
+};
+module.exports = { authMiddleware,authMiddleware2,authMiddleware3 };

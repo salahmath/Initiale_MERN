@@ -1,9 +1,9 @@
 const User = require('../models/userodel');
+const User_google = require('../models/usergooglr');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const axios = require('axios');
 exports.registerUser = async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password,image } = req.body;
 
   try {
     // Check if user already exists
@@ -17,6 +17,7 @@ exports.registerUser = async (req, res) => {
       username,
       email,
       password,
+      image
     });
 
     // Hash password
@@ -46,7 +47,7 @@ exports.LoginUser = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user._id }, 'your_jwt_secret', { expiresIn: '1h' });
+    const token = jwt.sign({ id: user._id }, 'your_jwt_secret', { expiresIn: '1d' });
 
     res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
   } catch (error) {
@@ -56,48 +57,66 @@ exports.LoginUser = async (req, res) => {
 
 exports.getauser = async (req, res) => {
   const { id } = req.user;
+  
   try {
-    const User = await User.findById(id);
-    res.json({ User });
-  } catch(err) {
-    res.status(500).json({ message: 'Aucun utilisateur trouvé' });
+    const user = await User.findById(id); // Fetch the user from the main collection
+    const user_google = await User_google.findById(id); // Fetch the user from Google collection
+
+    // If one or both users are not found, handle accordingly
+    if (!user && !user_google) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Concatenate the results if both users are found
+    const allUsers = [user, user_google].filter(Boolean); // Filter out any null or undefined values
+
+    res.json({ allUsers });
+  } catch (err) {
+    console.error(err); // Log the error for debugging
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+exports.getauserid = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Fetch the user from the main collection
+    const user = await User.findById(id);
+
+    // Fetch the user from the Google collection
+    const user_google = await User_google.findById(id);
+
+    // If neither user is found, send a 404 response
+    if (!user && !user_google) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Concatenate the results, filtering out any null or undefined values
+    const allUsers = [user, user_google].filter(Boolean);
+
+    res.json({ allUsers });
+  } catch (err) {
+    console.error(err); // Log the error for debugging
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-exports.facebook = async (req, res) => {
+exports.uploadImage = async (req, res) => {
   try {
-    const { userId, accessToken } = req.body;
-
-    if (!userId || userId === '' || !accessToken || accessToken === '') {
-      return res.status(400).json({ message: "userId and accessToken are required" });
+    if (!req.file) {
+      return res.status(400).json({ msg: 'No file uploaded' });
     }
 
-    let { data } = await getUserByFacebookIdAndAccessToken(accessToken, userId);
-    let user = await User.findOne({ facebookId: data.id });
-    let authObject = {};
+    // Assuming user is authenticated and ID is available in req.user
+    const userId = req.user._id;
 
-    if (user) {
-      let token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '20h' });
-      authObject = { auth: true, token, user, message: "Successfully logged in." };
-      return res.status(201).json(authObject);
-    } else {
-      user = await User.create({
-        name: data.name,
-        email: data.email,
-        facebookId: data.id
-      });
-      let token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret', { expiresIn: '20h' });
-      authObject = { auth: true, token, user, message: "Successfully Registered." };
-      return res.status(201).json(authObject);
-    }
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: error.message });
+    // Update user's image field
+    const imageUrl = `/uploads/${req.file.filename}`;
+    await User.findByIdAndUpdate(userId, { image: imageUrl });
+
+    res.json({ imageUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Internal server error' });
   }
-};
-
-// Fonction pour obtenir les informations de l'utilisateur Facebook
-const getUserByFacebookIdAndAccessToken = (accessToken, userId) => {
-  let urlGraphFacebook = `https://graph.facebook.com/v2.11/${userId}?fields=id,name,email&access_token=${accessToken}`;
-  return axios.get(urlGraphFacebook);
 };

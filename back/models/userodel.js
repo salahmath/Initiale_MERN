@@ -1,10 +1,10 @@
+// models/User.js
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
-    unique: true,
   },
   email: {
     type: String,
@@ -13,8 +13,15 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
   },
+  freind:{
+    type: String,
+    default: false,
+  },
+  image: {  // New field for storing the image URL
+    type: String,
+    default: '',
+  }
 });
 
 const User = mongoose.model('User', userSchema);

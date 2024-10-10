@@ -10,6 +10,10 @@ const GoogleSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+  },
+  freind:{
+    type: String,
+    default: false,
   }
 });
 
